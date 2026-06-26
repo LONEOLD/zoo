@@ -32,23 +32,23 @@ export default function ResultPopup({ playerName, result, color, onDismiss }: Re
 
         <p
           className="text-sm font-bold mb-1 opacity-80"
-          style={{ color, fontFamily: "'Poor Story', system-ui" }}
+          style={{ color: '#ffffff', fontFamily: "'Poor Story', system-ui" }}
         >
           {playerName}
         </p>
-        <p className="text-xs opacity-50 mb-3" style={{ color }}>의 결과는...</p>
+        <p className="text-xs opacity-50 mb-3" style={{ color: '#ffffff' }}>의 결과는...</p>
         <p
           className="result-text leading-none"
           style={{
-            color,
+            color: '#ffffff',
             fontFamily: "'Poor Story', system-ui",
             fontSize: 'clamp(3.5rem, 12vw, 6rem)',
-            textShadow: `0 0 30px ${color}99, 0 0 60px ${color}44`,
+            textShadow: `0 0 30px ${color}cc, 0 0 60px ${color}77`,
           }}
         >
           {result}
         </p>
-        <p className="text-xs mt-5 opacity-30" style={{ color }}>화면을 탭하면 닫혀요</p>
+        <p className="text-xs mt-5 opacity-30" style={{ color: '#ffffff' }}>화면을 탭하면 닫혀요</p>
       </div>
     </div>
   );
