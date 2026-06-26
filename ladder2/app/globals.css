@@ -1,81 +1,149 @@
 @import "tailwindcss";
 
+/* ── Theme variables ────────────────────────────────────────────────────── */
 :root {
-  --background: #0a0f1e;
-  --foreground: #f1f5f9;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+[data-theme="dark"] {
+  --bg: #0a0f1e;
+  --surface: rgba(30, 41, 59, 0.7);
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --header-border: rgba(255, 255, 255, 0.06);
+  --canvas-bg: rgba(15, 23, 42, 0.75);
+  --canvas-border: rgba(255, 255, 255, 0.07);
+  --orb1: rgba(99, 102, 241, 0.13);
+  --orb2: rgba(52, 211, 153, 0.08);
+  --input-bg: rgba(30, 41, 59, 0.9);
+  --input-border: rgba(255, 255, 255, 0.1);
+  --btn-secondary: rgba(51, 65, 85, 0.8);
+  --btn-secondary-hover: rgba(71, 85, 105, 0.9);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+[data-theme="light"] {
+  --bg: #faf5ff;
+  --surface: rgba(255, 255, 255, 0.9);
+  --border: rgba(167, 139, 250, 0.25);
+  --text: #2e1065;
+  --text-muted: #7c3aed;
+  --header-border: rgba(167, 139, 250, 0.2);
+  --canvas-bg: rgba(245, 240, 255, 0.85);
+  --canvas-border: rgba(167, 139, 250, 0.2);
+  --orb1: rgba(167, 139, 250, 0.18);
+  --orb2: rgba(196, 181, 253, 0.15);
+  --input-bg: rgba(255, 255, 255, 0.95);
+  --input-border: rgba(167, 139, 250, 0.35);
+  --btn-secondary: rgba(237, 233, 254, 0.8);
+  --btn-secondary-hover: rgba(221, 214, 254, 0.9);
+  color-scheme: light;
 }
 
-/* Animated mesh gradient background */
+/* ── Base ────────────────────────────────────────────────────────────────── */
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Cafe24 Surround', system-ui, sans-serif;
+  transition: background 0.35s ease, color 0.25s ease;
+}
+
+/* ── Background mesh ─────────────────────────────────────────────────────── */
 .bg-mesh {
   background:
-    radial-gradient(ellipse 80% 50% at 20% 20%, rgba(99,102,241,0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(52,211,153,0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(244,114,182,0.06) 0%, transparent 70%),
-    #0a0f1e;
+    radial-gradient(ellipse 80% 50% at 15% 20%, var(--orb1) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 40% at 85% 80%, var(--orb2) 0%, transparent 65%),
+    var(--bg);
 }
 
-/* Floating orbs */
+/* ── Floating orbs ───────────────────────────────────────────────────────── */
 @keyframes float1 {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  33%       { transform: translate(30px, -20px) scale(1.05); }
-  66%       { transform: translate(-20px, 15px) scale(0.97); }
+  33%       { transform: translate(28px, -18px) scale(1.04); }
+  66%       { transform: translate(-18px, 14px) scale(0.97); }
 }
 @keyframes float2 {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  50%       { transform: translate(-40px, 25px) scale(1.08); }
+  50%       { transform: translate(-36px, 22px) scale(1.07); }
+}
+.orb-1 { animation: float1 13s ease-in-out infinite; }
+.orb-2 { animation: float2 17s ease-in-out infinite; }
+
+/* ── Neon title (dark only) ─────────────────────────────────────────────── */
+[data-theme="dark"] .neon-text {
+  text-shadow: 0 0 12px currentColor, 0 0 32px currentColor, 0 0 64px currentColor;
+}
+[data-theme="light"] .neon-text {
+  text-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
 }
 
-.orb-1 {
-  animation: float1 12s ease-in-out infinite;
-}
-.orb-2 {
-  animation: float2 16s ease-in-out infinite;
-}
-
+/* ── Fade-in-up ──────────────────────────────────────────────────────────── */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.fade-in-up {
-  animation: fadeInUp 0.45s ease-out forwards;
-}
+.fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
 
-/* Neon text glow */
-.neon-text {
-  text-shadow:
-    0 0 10px currentColor,
-    0 0 30px currentColor,
-    0 0 60px currentColor;
-}
-
-/* Glowing button pulse */
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(99,102,241,0.4), 0 0 20px rgba(99,102,241,0.2); }
-  50%       { box-shadow: 0 0 16px rgba(99,102,241,0.7), 0 0 40px rgba(99,102,241,0.35); }
-}
-.glow-pulse {
-  animation: pulse-glow 2.4s ease-in-out infinite;
-}
-
-/* Result card pop-in */
+/* ── Pop-in (result cards) ───────────────────────────────────────────────── */
 @keyframes popIn {
-  0%   { opacity: 0; transform: scale(0.7); }
-  70%  { transform: scale(1.06); }
+  0%   { opacity: 0; transform: scale(0.65); }
+  65%  { transform: scale(1.06); }
   100% { opacity: 1; transform: scale(1); }
 }
-.pop-in {
-  animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+.pop-in { animation: popIn 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+/* ── Start button glow pulse ─────────────────────────────────────────────── */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(124, 58, 237, 0.45), 0 4px 20px rgba(124, 58, 237, 0.2); }
+  50%       { box-shadow: 0 0 22px rgba(124, 58, 237, 0.75), 0 4px 32px rgba(124, 58, 237, 0.4); }
 }
+[data-theme="dark"] .glow-pulse { animation: glow-pulse 2.4s ease-in-out infinite; }
+[data-theme="light"] .glow-pulse { box-shadow: 0 4px 16px rgba(124, 58, 237, 0.35); }
+
+/* ── Result popup overlay ────────────────────────────────────────────────── */
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.popup-overlay {
+  animation: overlayIn 0.2s ease forwards;
+  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.55);
+}
+[data-theme="light"] .popup-overlay {
+  background: rgba(46, 16, 101, 0.4);
+}
+
+@keyframes cardBounce {
+  0%   { opacity: 0; transform: scale(0.3) rotate(-4deg); }
+  55%  { transform: scale(1.08) rotate(1.5deg); }
+  75%  { transform: scale(0.97) rotate(-0.5deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+.popup-card {
+  animation: cardBounce 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+}
+
+/* Sparkles around the popup card */
+.sparkle {
+  pointer-events: none;
+  animation: sparklePop 0.6s ease-out forwards;
+}
+.sparkle-1 { top: -20px; left: 10%; }
+.sparkle-2 { top: -16px; right: 15%; }
+.sparkle-3 { bottom: -18px; left: 20%; }
+.sparkle-4 { bottom: -14px; right: 10%; }
+
+@keyframes sparklePop {
+  0%   { opacity: 0; transform: scale(0); }
+  60%  { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0.85; transform: scale(1); }
+}
+
+/* ── Theme toggle button ─────────────────────────────────────────────────── */
+.theme-toggle {
+  transition: transform 0.3s ease;
+}
+.theme-toggle:hover { transform: rotate(20deg) scale(1.1); }
+.theme-toggle:active { transform: scale(0.9); }
