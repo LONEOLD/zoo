@@ -12,8 +12,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const runtime = "edge";
-
 export const metadata: Metadata = {
   title: "사다리타기",
   description: "재미있는 사다리타기 게임",
