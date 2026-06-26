@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import confetti from 'canvas-confetti';
 import {
   LadderConfig,
   generateLadder,
@@ -8,6 +9,17 @@ import {
   PLAYER_COLORS,
 } from '@/lib/ladder';
 import LadderCanvas from './LadderCanvas';
+
+function fireConfetti() {
+  const colors = PLAYER_COLORS;
+  // Two bursts from sides
+  confetti({ particleCount: 60, angle: 60, spread: 55, origin: { x: 0 }, colors });
+  confetti({ particleCount: 60, angle: 120, spread: 55, origin: { x: 1 }, colors });
+  // Center burst after a beat
+  setTimeout(() => {
+    confetti({ particleCount: 80, spread: 80, origin: { y: 0.6 }, colors });
+  }, 200);
+}
 
 type Phase = 'setup' | 'game' | 'done';
 
@@ -69,7 +81,10 @@ export default function LadderGame() {
     const pIdx = tracePlayerIdx;
     setRevealed(prev => {
       const next = [...prev, pIdx];
-      if (next.length === config.players.length) setPhase('done');
+      if (next.length === config.players.length) {
+        setPhase('done');
+        fireConfetti();
+      }
       return next;
     });
     setIsAnimating(false);
@@ -82,6 +97,7 @@ export default function LadderGame() {
     setTracePlayerIdx(null);
     setIsAnimating(false);
     setPhase('done');
+    fireConfetti();
   }
 
   function resetGame() {
@@ -93,19 +109,23 @@ export default function LadderGame() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
-      <header className="py-4 px-4 text-center border-b border-slate-800">
-        <h1 className="text-2xl font-bold text-indigo-400 tracking-wide">사다리타기</h1>
+    <div className="min-h-screen bg-mesh text-slate-100 flex flex-col relative overflow-hidden">
+      {/* Floating background orbs */}
+      <div className="orb-1 pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full bg-indigo-600/10 blur-3xl" />
+      <div className="orb-2 pointer-events-none absolute -bottom-32 -right-32 w-80 h-80 rounded-full bg-emerald-500/8 blur-3xl" />
+
+      <header className="py-5 px-4 text-center border-b border-white/5 relative z-10">
+        <h1 className="text-3xl font-black tracking-widest text-indigo-400 neon-text">사다리타기</h1>
         <p className="text-slate-400 text-sm mt-1">
           {phase === 'setup'
             ? '참가자와 결과를 입력하세요'
             : phase === 'game'
             ? '참가자 이름을 클릭해서 결과를 확인하세요'
-            : '모든 결과가 공개되었습니다!'}
+            : '🎉 모든 결과가 공개되었습니다!'}
         </p>
       </header>
 
-      <main className="flex-1 flex flex-col items-center px-4 py-6 gap-6">
+      <main className="flex-1 flex flex-col items-center px-4 py-6 gap-6 relative z-10">
         {phase === 'setup' && (
           <SetupPanel
             players={players}
@@ -136,10 +156,11 @@ export default function LadderGame() {
                         borderColor: color,
                         color: done ? '#64748b' : color,
                         backgroundColor: active ? color + '33' : 'transparent',
+                        boxShadow: active ? `0 0 14px ${color}66` : 'none',
                       }}
                       className={[
-                        'px-4 py-2 rounded-full border-2 font-semibold text-sm transition-all',
-                        done ? 'opacity-40 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer',
+                        'px-4 py-2 rounded-full border-2 font-semibold text-sm transition-all duration-200',
+                        done ? 'opacity-35 cursor-not-allowed' : 'hover:scale-105 hover:brightness-110 cursor-pointer',
                         active ? 'scale-105' : '',
                       ].join(' ')}
                     >
@@ -150,7 +171,7 @@ export default function LadderGame() {
               </div>
 
               {/* Canvas */}
-              <div className="overflow-x-auto flex justify-center rounded-xl bg-slate-800/60 p-4 border border-slate-700">
+              <div className="overflow-x-auto flex justify-center rounded-2xl bg-slate-900/70 backdrop-blur-sm p-4 border border-white/10 shadow-2xl shadow-indigo-950/50">
                 <LadderCanvas
                   config={config}
                   tracePlayerIndex={tracePlayerIdx}
@@ -172,8 +193,12 @@ export default function LadderGame() {
                     return (
                       <div
                         key={pIdx}
-                        className="rounded-xl p-3 text-center border fade-in-up"
-                        style={{ borderColor: color, backgroundColor: color + '15' }}
+                        className="rounded-xl p-3 text-center border pop-in"
+                        style={{
+                          borderColor: color,
+                          backgroundColor: color + '18',
+                          boxShadow: `0 0 16px ${color}33`,
+                        }}
                       >
                         <p className="font-bold text-sm" style={{ color }}>{config.players[pIdx]}</p>
                         <p className="text-xs text-slate-500 my-0.5">→</p>
