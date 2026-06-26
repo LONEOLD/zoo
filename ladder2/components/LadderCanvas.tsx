@@ -169,7 +169,7 @@ export default function LadderCanvas({
 
   function drawLabels(ctx: CanvasRenderingContext2D) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = "bold 12px 'Cafe24 Surround', system-ui, sans-serif";
+    ctx.font = "bold 12px 'Poor Story', system-ui, sans-serif";
 
     const labelText = isDark ? '#ffffff' : '#2e1065';
     const questionColor = isDark ? '#64748b' : '#a78bfa';
@@ -217,7 +217,7 @@ export default function LadderCanvas({
         roundRect(ctx, rx - 28, ry - 13, 56, 26, 10);
         ctx.fill(); ctx.stroke();
         ctx.fillStyle = questionColor;
-        ctx.font = "14px 'Cafe24 Surround', system-ui";
+        ctx.font = "14px 'Poor Story', system-ui";
         ctx.fillText('?', rx, ry);
         ctx.restore();
       }

@@ -32,7 +32,7 @@ export default function ResultPopup({ playerName, result, color, onDismiss }: Re
 
         <p
           className="text-sm font-bold mb-1 opacity-80"
-          style={{ color, fontFamily: "'Cafe24 Surround', system-ui" }}
+          style={{ color, fontFamily: "'Poor Story', system-ui" }}
         >
           {playerName}
         </p>
@@ -41,7 +41,7 @@ export default function ResultPopup({ playerName, result, color, onDismiss }: Re
           className="result-text leading-none"
           style={{
             color,
-            fontFamily: "'Cafe24 Surround', system-ui",
+            fontFamily: "'Poor Story', system-ui",
             fontSize: 'clamp(3.5rem, 12vw, 6rem)',
             textShadow: `0 0 30px ${color}99, 0 0 60px ${color}44`,
           }}

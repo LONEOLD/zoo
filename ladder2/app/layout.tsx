@@ -18,7 +18,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Cafe24+Surround&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Poor+Story&display=swap"
           rel="stylesheet"
         />
       </head>

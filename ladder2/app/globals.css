@@ -44,7 +44,7 @@
 html, body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Cafe24 Surround', system-ui, sans-serif;
+  font-family: 'Poor Story', system-ui, sans-serif;
   transition: background 0.35s ease, color 0.25s ease;
 }
 
