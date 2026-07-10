@@ -4,7 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>위믹스 복지타워 : 60일의 기적</title>
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/Galmuri11-Bold.woff2" crossorigin>
 <style>
+  /* Galmuri (c) 2019-2025 Lee Minseo — SIL Open Font License 1.1, assets/fonts/LICENSE.txt */
+  @font-face{
+    font-family:Galmuri11; font-style:normal; font-weight:400; font-display:swap;
+    src:local('Galmuri11 Regular'),url('assets/fonts/Galmuri11.woff2') format('woff2');
+  }
+  @font-face{
+    /* 700~900을 한 페이스에 매핑 → 브라우저가 가짜 볼드를 덧씌우지 않는다 */
+    font-family:Galmuri11; font-style:normal; font-weight:700 900; font-display:swap;
+    src:local('Galmuri11 Bold'),url('assets/fonts/Galmuri11-Bold.woff2') format('woff2');
+  }
   :root{
     --accent:#35e6d6;
     --accent2:#8a7bff;
@@ -12,7 +23,7 @@
     --danger:#ff5b6e;
     --glass:rgba(12,18,34,.5);
     --stroke:rgba(255,255,255,.15);
-    --kfont:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif;
+    --kfont:'Galmuri11','Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#05060a;}
@@ -412,6 +423,8 @@ const fh=48, DEPTH=15, MARGIN=40;
 const SPACE_H=52*fh, PERFECT=9;
 /* 층이 오를수록 초록 → 파랑 → 보라. HUE_TOP층에서 보라에 도달 */
 const HUE_LOW=118, HUE_HIGH=284, HUE_TOP=60;
+/* 캔버스 텍스트도 CSS와 같은 폰트 스택을 쓴다 (예전엔 Malgun Gothic 고정 → 아이폰에서만 달라짐) */
+const CFONT=`'Galmuri11','Malgun Gothic','Apple SD Gothic Neo',sans-serif`;
 const SPEED0=310, SPEEDI=15, SPEEDMAX=760;
 const GRAV=1150;
 const TOTAL_DAYS=60;
@@ -835,9 +848,20 @@ function drawGround(){
   ctx.fillStyle='rgba(53,230,214,.14)'; ctx.fillRect(0,gy,CW,3);
   ctx.textAlign='center'; ctx.textBaseline='alphabetic'; ctx.font='27px serif';
   for(let i=0;i<GROUND_SET.length;i++){ const x=70+i*(CW-140)/(GROUND_SET.length-1); ctx.fillText(GROUND_SET[i],x,gy+31); }
-  ctx.font='bold 15px "Malgun Gothic",sans-serif';
-  ctx.fillStyle='rgba(0,0,0,.3)'; rr(CW/2-160,gy+40,320,26,8); ctx.fill();
-  ctx.fillStyle=css([255,215,106]); ctx.fillText('🎉 위믹스 드림 복지타워 오픈 D-60 · 건설 현장 🚧',CW/2,gy+58);
+  const banner='🎉 위믹스 드림 복지타워 오픈 D-60 · 건설 현장 🚧';
+  const bw=fitFont(banner,CW-48,'bold',15,9)+24;
+  ctx.fillStyle='rgba(0,0,0,.3)'; rr(CW/2-bw/2,gy+40,bw,26,8); ctx.fill();
+  ctx.fillStyle=css([255,215,106]); ctx.fillText(banner,CW/2,gy+58);
+}
+/* 갈무리는 맑은 고딕보다 넓다. 글자가 maxW에 들어갈 때까지 크기를 줄이고 최종 폭을 돌려준다. */
+function fitFont(text,maxW,weight,size,minSize){
+  let s=size;
+  for(;;){
+    ctx.font=`${weight} ${s}px ${CFONT}`;
+    const w=ctx.measureText(text).width;
+    if(w<=maxW || s<=minSize) return w;
+    s-=0.5;
+  }
 }
 /* --- 빌딩 창문 (롤백) --- */
 function drawWindows(x,y,w,h,level){
@@ -866,9 +890,12 @@ function drawBase(){
   const topY=sY(fh), cx=b.x+b.w/2;
   ctx.fillStyle='rgba(14,18,32,.9)'; ctx.fillRect(cx-24,topY+fh-27,48,27);
   ctx.fillStyle='rgba(120,200,255,.45)'; ctx.fillRect(cx-20,topY+fh-23,17,23); ctx.fillRect(cx+3,topY+fh-23,17,23);
-  ctx.fillStyle='rgba(0,0,0,.34)'; rr(cx-96,topY+4,192,21,6); ctx.fill();
-  ctx.fillStyle='#eafffb'; ctx.font='bold 12.5px "Malgun Gothic",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText('WEMADE PLAY  ·  WELFARE TOWER',cx,topY+15); ctx.textBaseline='alphabetic';
+  const label='WEMADE PLAY  ·  WELFARE TOWER';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const lw=fitFont(label,Math.min(b.w-30,240),'bold',12.5,7)+16;   // +16 여백까지 더해 베이스 블록 안에 들어가게
+  ctx.fillStyle='rgba(0,0,0,.34)'; rr(cx-lw/2,topY+4,lw,21,6); ctx.fill();
+  ctx.fillStyle='#eafffb';
+  ctx.fillText(label,cx,topY+15); ctx.textBaseline='alphabetic';
 }
 function drawGhost(){
   if(state!=='playing'||!moving) return;
@@ -903,7 +930,7 @@ function drawFloats(){
   ctx.textAlign='center'; ctx.textBaseline='middle';
   for(const f of floats){
     ctx.save(); ctx.globalAlpha=clamp(f.alpha,0,1);
-    ctx.font=`900 ${(30*f.scale)|0}px "Malgun Gothic",sans-serif`;
+    ctx.font=`900 ${(30*f.scale)|0}px ${CFONT}`;
     ctx.shadowColor=`hsl(${f.hue} 90% 60%)`; ctx.shadowBlur=20;
     ctx.fillStyle='#fff'; ctx.fillText(f.text,f.x,f.y); ctx.restore();
   }
@@ -913,7 +940,7 @@ function drawBubbles(){
   ctx.textAlign='center'; ctx.textBaseline='middle';
   for(const bb of bubbles){
     const a=clamp(bb.alpha,0,1);
-    ctx.font='bold 18px "Malgun Gothic",sans-serif';
+    ctx.font=`bold 18px ${CFONT}`;
     const tw=ctx.measureText(bb.txt).width, bw=tw+24, bh=30;
     const x=clamp(bb.x, bw/2+6, CW-bw/2-6), y=bb.y;
     ctx.save(); ctx.globalAlpha=a;
@@ -1073,6 +1100,10 @@ function onResize(){
 function boot(){
   cv=$('cv'); ctx=cv.getContext('2d');
   loadChars();
+  /* 캔버스는 CSS와 달리 폰트를 스스로 요청하지 않는다 → 첫 프레임 전에 미리 받아둔다 */
+  if(document.fonts&&document.fonts.load){
+    ['bold 12.5px','bold 15px','bold 18px','900 30px'].forEach(f=>{ try{ document.fonts.load(f+" Galmuri11"); }catch(e){} });
+  }
   stage=$('stage'); floorVal=$('floorVal'); ddayVal=$('ddayVal'); ddayBox=$('ddayBox');
   daybar=$('daybar'); hintEl=$('hint'); pauseBtn=$('pauseBtn'); pauseOv=$('pauseOv');
   introOv=$('introOv'); startOv=$('startOv'); overOv=$('overOv'); startBest=$('startBest'); overBest=$('overBest');
