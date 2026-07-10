@@ -519,6 +519,38 @@ function sndFail(){ if(!actx) return; try{
 }catch(e){} }
 function sndTick(){ blip(1180,0.04,'square',0.05); }
 
+/* 군중 함성 "와~". 대역통과한 노이즈를 부풀렸다 잦아들게 해서 만든다.
+   콤보가 길수록 더 크고 길게. 노이즈 버퍼는 한 번만 만들어 재사용. */
+let noiseBuf=null;
+function getNoise(){
+  if(noiseBuf || !actx) return noiseBuf;
+  const len=(actx.sampleRate*1.2)|0;
+  noiseBuf=actx.createBuffer(1,len,actx.sampleRate);
+  const d=noiseBuf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+  return noiseBuf;
+}
+function sndCheer(combo){
+  if(!actx) return;
+  try{
+    const buf=getNoise(); if(!buf) return;
+    const t=actx.currentTime;
+    const lvl=clamp(0.05+combo*0.022,0.05,0.16);
+    const dur=clamp(0.62+combo*0.07,0.62,1.15);
+    const src=actx.createBufferSource(); src.buffer=buf; src.loop=true;
+    const bp=actx.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=0.85;   // Q는 AudioParam이라 .value로 넣어야 한다
+    bp.frequency.setValueAtTime(700,t);                       // 목소리 대역을 훑어 올렸다가
+    bp.frequency.linearRampToValueAtTime(1500,t+dur*0.35);
+    bp.frequency.linearRampToValueAtTime(900,t+dur);
+    const g=actx.createGain();
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(lvl,t+0.16);          // 훅 부풀었다가
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);        // 서서히 잦아든다
+    src.connect(bp); bp.connect(g); g.connect(actx.destination);
+    src.start(t); src.stop(t+dur+0.05);
+  }catch(e){}
+}
+
 /* ================= 헬퍼 ================= */
 const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -703,8 +735,8 @@ function addDebris(x,w,level,hue,side){
   debris.push({x, sy:sY((level+1)*fh), w, h:fh, hue, vx:side*rnd(60,140), vy:rnd(-70,-20), rot:0, vrot:side*rnd(2,5), alpha:1});
 }
 function addFloat(x,y,text,hue){ floats.push({x,y,text,hue,alpha:1,vy:-46,scale:0.4,life:0}); }
-function addConfetti(x,y,hue){
-  for(let i=0;i<22;i++){
+function addConfetti(x,y,hue,n){
+  for(let i=0;i<(n||22);i++){
     const a=rnd(0,6.28), sp=rnd(90,320);
     confetti.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-140,rot:rnd(0,6.28),vrot:rnd(-8,8),
       col:`hsl(${(hue+rnd(-40,40))|0} 90% ${(58+rnd(0,18))|0}%)`,w:rnd(6,13),h:rnd(6,13),alpha:1});
@@ -749,6 +781,11 @@ function placeBlock(){
     const ph=PHRASES[(floors-1+combo)%PHRASES.length];
     addFloat(cx, cy-8, combo>1?ph+'  x'+combo:ph, m.hue);
     addConfetti(cx, cy, m.hue); sndPerfect();
+    if(combo>=2){                                  // 콤보가 이어질 때만 환호 + 곁불꽃
+      sndCheer(combo);
+      const bursts=Math.min(3,combo-1);
+      for(let i=0;i<bursts;i++) addConfetti(cx+rnd(-72,72), cy-rnd(0,40), (m.hue+i*90)%360, 10);
+    }
   }else{ combo=0; shake=6; sndPlace(); }
   if(floors>=61){ addConfetti(cx-40, cy, (m.hue+120)%360); addConfetti(cx+40, cy, (m.hue+240)%360); }  // 우주 돌파 축포
   spawnBubble(); cheerCharacters();   // 매 배치마다 친구들 환호 + 말풍선
