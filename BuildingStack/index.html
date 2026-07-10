@@ -1,0 +1,1097 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>위믹스 복지타워 : 60일의 기적</title>
+<style>
+  :root{
+    --accent:#35e6d6;
+    --accent2:#8a7bff;
+    --gold:#ffd76a;
+    --danger:#ff5b6e;
+    --glass:rgba(12,18,34,.5);
+    --stroke:rgba(255,255,255,.15);
+    --kfont:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#05060a;}
+  body{font-family:var(--kfont);-webkit-tap-highlight-color:transparent;}
+
+  /* 게임 컨테이너 */
+  #game{
+    width:100%;height:100%;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 40%,#0c1122,#04050a 80%);
+  }
+
+  /* 가로 화면은 16:9 유지, 세로 화면은 뷰포트를 꽉 채운다 (캔버스가 세로로 늘어남) */
+  #stage{
+    position:relative;
+    width:min(100vw,177.78vh);
+    height:min(56.25vw,100vh);
+    margin:auto;
+    border-radius:8px;
+    overflow:hidden;
+    container-type:size;
+    user-select:none;
+    touch-action:manipulation;
+    box-shadow:0 20px 80px rgba(0,0,0,.6);
+    cursor:pointer;
+  }
+  #cv{position:absolute;inset:0;width:100%;height:100%;display:block;}
+
+  #stage::after{
+    content:'';position:absolute;inset:0;pointer-events:none;z-index:2;
+    box-shadow:inset 0 0 130px 24px rgba(0,0,0,.5);border-radius:inherit;
+  }
+
+  /* ================= HUD ================= */
+  .hud-box{
+    position:absolute;top:3.2cqmin;z-index:3;pointer-events:none;
+    background:var(--glass);border:1px solid var(--stroke);
+    border-radius:2.4cqmin;padding:1.5cqmin 2.4cqmin;
+    -webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);
+    box-shadow:0 6px 24px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);
+    display:flex;flex-direction:column;gap:.4cqmin;min-width:22cqmin;
+  }
+  #floorBox{left:3.2cqmin;}
+  #ddayBox{right:3.2cqmin;text-align:right;align-items:flex-end;}
+  .hud-label{
+    font-size:1.9cqmin;letter-spacing:.32em;text-transform:uppercase;
+    color:rgba(255,255,255,.62);font-weight:700;padding-left:.35em;
+  }
+  .hud-val{
+    font-size:5cqmin;font-weight:900;line-height:1;letter-spacing:.02em;
+    font-variant-numeric:tabular-nums;
+    color:#eafffb;text-shadow:0 0 10px rgba(53,230,214,.65),0 0 22px rgba(53,230,214,.35);
+  }
+  #ddayBox .hud-val{color:#eaf3ff;text-shadow:0 0 10px rgba(138,123,255,.7),0 0 22px rgba(138,123,255,.4);}
+  #daybarWrap{width:100%;height:1.1cqmin;border-radius:1cqmin;background:rgba(255,255,255,.12);margin-top:.7cqmin;overflow:hidden;}
+  #daybar{height:100%;width:100%;border-radius:1cqmin;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .35s ease,background .3s;}
+  #ddayBox.danger .hud-val{color:#ffd0d6;text-shadow:0 0 12px rgba(255,91,110,.9);animation:pulseD .7s ease-in-out infinite;}
+  #ddayBox.danger #daybar{background:linear-gradient(90deg,#ff8a5b,var(--danger));}
+  @keyframes pulseD{0%,100%{transform:scale(1);}50%{transform:scale(1.09);}}
+
+  /* 하단 안내 */
+  #hint{
+    position:absolute;left:50%;bottom:5cqmin;transform:translateX(-50%);
+    z-index:3;pointer-events:none;
+    font-size:2.5cqmin;font-weight:700;color:#eafffb;
+    background:var(--glass);border:1px solid var(--stroke);
+    padding:1.2cqmin 2.6cqmin;border-radius:6cqmin;
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    box-shadow:0 4px 18px rgba(0,0,0,.35);
+    animation:floaty 1.6s ease-in-out infinite;
+    transition:opacity .5s;
+  }
+  #hint.hide{opacity:0;}
+  @keyframes floaty{0%,100%{transform:translate(-50%,0);}50%{transform:translate(-50%,-1cqmin);}}
+
+  /* 일시정지 버튼 (플레이 중 상단 중앙) */
+  #pauseBtn{
+    position:absolute;top:3.2cqmin;left:50%;transform:translateX(-50%);z-index:4;
+    width:7cqmin;height:7cqmin;min-width:34px;min-height:34px;border-radius:50%;
+    border:1px solid var(--stroke);background:var(--glass);color:#eafffb;
+    font-size:3cqmin;font-weight:900;cursor:pointer;padding:0;line-height:1;
+    display:none;align-items:center;justify-content:center;
+    -webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);
+    box-shadow:0 6px 24px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);
+    transition:transform .12s,filter .2s;
+  }
+  #pauseBtn.show{display:flex;}
+  #pauseBtn:hover{filter:brightness(1.15);}
+  #pauseBtn:active{transform:translateX(-50%) scale(.94);}
+
+  /* ================= 오버레이 공통 ================= */
+  .overlay{
+    position:absolute;inset:0;z-index:5;
+    display:flex;align-items:center;justify-content:center;padding:2cqmin;
+    background:radial-gradient(circle at 50% 45%,rgba(6,10,22,.6),rgba(2,3,8,.85));
+    -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+    opacity:0;pointer-events:none;transition:opacity .4s ease;
+  }
+  .overlay.show{opacity:1;pointer-events:auto;}
+  .overlay.kbd{align-items:flex-start;}
+  .overlay.kbd .card{margin-top:1.5cqh;}
+
+  .card{
+    width:min(74cqw,150cqh);
+    max-height:96cqh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    background:linear-gradient(160deg,rgba(24,30,52,.94),rgba(12,16,30,.96));
+    border:1px solid var(--stroke);border-radius:4cqmin;
+    padding:5cqmin 5.5cqmin;text-align:center;color:#eef3ff;
+    box-shadow:0 30px 90px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.09);
+    transform:translateY(3cqmin) scale(.94);opacity:0;transition:transform .45s cubic-bezier(.2,.9,.25,1.2),opacity .45s;
+  }
+  .overlay.show .card{transform:translateY(0) scale(1);opacity:1;}
+
+  .badge{
+    display:inline-block;font-size:2cqmin;letter-spacing:.3em;text-transform:uppercase;
+    color:var(--accent);border:1px solid rgba(53,230,214,.5);border-radius:5cqmin;
+    padding:.7cqmin 2cqmin;margin-bottom:2.4cqmin;font-weight:800;
+    background:rgba(53,230,214,.08);
+  }
+  .title{
+    font-size:6.4cqmin;font-weight:900;line-height:1.08;margin:0 0 1cqmin;
+    background:linear-gradient(90deg,#fff,var(--accent) 55%,var(--accent2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .subtitle{font-size:3.4cqmin;font-weight:800;color:var(--gold);margin:.4cqmin 0 2.6cqmin;letter-spacing:.02em;}
+  .desc{font-size:2.6cqmin;line-height:1.6;color:rgba(232,240,255,.82);margin:0 auto 2.4cqmin;max-width:58cqw;}
+  .desc b{color:#fff;}
+  .emoji-row{font-size:5cqmin;letter-spacing:.4em;margin:1cqmin 0 2.6cqmin;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4));}
+  .best{font-size:2.3cqmin;color:rgba(232,240,255,.6);margin-top:1.8cqmin;font-weight:700;}
+  .best b{color:var(--gold);}
+
+  .btn{
+    appearance:none;border:0;cursor:pointer;font-family:inherit;
+    font-size:3.4cqmin;font-weight:900;color:#04121a;letter-spacing:.02em;
+    padding:1.9cqmin 6cqmin;border-radius:6cqmin;
+    background:linear-gradient(135deg,var(--accent),#5be3ff 60%,var(--accent2));
+    box-shadow:0 10px 30px rgba(53,230,214,.35),inset 0 1px 0 rgba(255,255,255,.5);
+    transition:transform .12s ease,box-shadow .2s ease,filter .2s;
+  }
+  .btn:hover{transform:translateY(-2px);filter:brightness(1.06);box-shadow:0 16px 40px rgba(53,230,214,.5);}
+  .btn:active{transform:translateY(1px) scale(.98);}
+
+  /* ================= 인트로 컷씬 ================= */
+  #introOv .card{width:min(82cqw,158cqh);}
+  .title-img{
+    display:block;margin:0 auto 2.6cqmin;
+    width:auto;height:auto;max-width:96%;max-height:32cqh;
+    filter:drop-shadow(0 6px 16px rgba(0,0,0,.5));
+    animation:titleFloat 2.8s ease-in-out infinite;
+  }
+  @keyframes titleFloat{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-1.1cqmin) scale(1.015);}}
+  .dialogue{
+    text-align:left;background:rgba(0,0,0,.32);border:1px solid var(--stroke);
+    border-left:4px solid var(--accent);border-radius:2.6cqmin;
+    padding:3cqmin 3.4cqmin;margin-bottom:3.4cqmin;box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .npc{display:flex;align-items:center;gap:2cqmin;margin-bottom:1.8cqmin;}
+  .npc-avatar{width:9cqmin;height:9cqmin;flex:0 0 auto;border-radius:50%;overflow:hidden;
+    background:rgba(255,255,255,.08);border:0.5cqmin solid var(--accent);box-shadow:0 3px 8px rgba(0,0,0,.45);
+    display:flex;align-items:center;justify-content:center;padding:.6cqmin;}
+  .npc-avatar img{width:100%;height:100%;object-fit:contain;display:block;}
+  .npc-meta{display:flex;flex-direction:column;gap:.3cqmin;}
+  .npc-name{font-size:3cqmin;font-weight:900;color:var(--accent);}
+  .npc-role{font-size:2cqmin;font-weight:700;color:rgba(232,240,255,.55);}
+  .dialogue-text{font-size:2.9cqmin;line-height:1.7;color:#eef3ff;margin:0;}
+  .dialogue-text b{color:var(--gold);}
+
+  /* ================= 결과 팝업(랭킹) ================= */
+  #overOv .card{width:min(88cqw,168cqh);text-align:center;}
+  .over-cols{display:flex;flex-wrap:wrap;gap:4cqmin;align-items:stretch;justify-content:center;text-align:center;}
+  .over-left{flex:1 1 40%;min-width:44%;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .over-right{flex:1 1 44%;min-width:44%;display:flex;flex-direction:column;gap:1.8cqmin;justify-content:center;}
+  .over-icon{font-size:8cqmin;line-height:1;margin-bottom:1cqmin;}
+  #overOv .title{font-size:5.6cqmin;}
+  #overOv .desc{font-size:2.5cqmin;margin-bottom:2cqmin;max-width:none;}
+  .rankchip{
+    display:inline-block;font-size:2.9cqmin;font-weight:900;color:#fff;
+    padding:1cqmin 2.8cqmin;border-radius:4cqmin;margin:.4cqmin 0;
+    background:linear-gradient(90deg,rgba(53,230,214,.25),rgba(138,123,255,.28));
+    border:1px solid var(--stroke);
+  }
+  /* 결과 등급 배지 (네온) — 등급별 색상은 --gc(r,g,b) 로 제어 */
+  .grade-badge{display:flex;flex-direction:column;align-items:center;gap:1cqmin;margin:1.4cqmin 0 2.4cqmin;--gc:53,230,214;}
+  .grade-badge.t1{--gc:150,164,196;}   /* 임시 가설 천막 */
+  .grade-badge.t2{--gc:53,230,214;}    /* 쾌적한 모던 오피스 */
+  .grade-badge.t3{--gc:138,123,255;}   /* 초호화 드림 복지 타워 */
+  .grade-badge.t4{--gc:255,215,106;}   /* 우주 제일 신의 직장 */
+  .grade-floor{
+    font-size:8.6cqmin;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;color:#eafffb;
+    text-shadow:0 0 10px rgba(var(--gc),.9),0 0 26px rgba(var(--gc),.55),0 0 52px rgba(var(--gc),.3);
+  }
+  .grade-name{
+    font-size:4.4cqmin;font-weight:900;letter-spacing:.02em;color:#fff;
+    padding:1.1cqmin 3.4cqmin;border-radius:6cqmin;
+    background:rgba(var(--gc),.15);border:1px solid rgba(var(--gc),.6);
+    box-shadow:0 0 22px rgba(var(--gc),.32),inset 0 1px 0 rgba(255,255,255,.14);
+    text-shadow:0 0 8px rgba(var(--gc),.75),0 0 16px rgba(var(--gc),.45);
+    animation:gradeGlow 1.8s ease-in-out infinite;
+  }
+  @keyframes gradeGlow{
+    0%,100%{filter:brightness(1);text-shadow:0 0 8px rgba(var(--gc),.7),0 0 16px rgba(var(--gc),.4);}
+    50%{filter:brightness(1.18);text-shadow:0 0 13px rgba(var(--gc),.98),0 0 30px rgba(var(--gc),.62);}
+  }
+  .over-foot{margin-top:3.4cqmin;}
+
+  .rank-panel{background:rgba(0,0,0,.26);border:1px solid var(--stroke);border-radius:2.6cqmin;padding:2cqmin 2.2cqmin;text-align:left;}
+  .rank-title{font-size:2.4cqmin;font-weight:900;color:var(--gold);margin-bottom:1.4cqmin;letter-spacing:.02em;text-align:center;}
+  .rank-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.8cqmin;min-height:24cqmin;}
+  .rank-list li{display:flex;align-items:center;gap:1.4cqmin;font-size:2.4cqmin;font-weight:800;padding:.9cqmin 1.2cqmin;border-radius:1.6cqmin;background:rgba(255,255,255,.05);}
+  .rank-list li .pos{flex:0 0 auto;min-width:3.4cqmin;text-align:center;font-weight:900;color:var(--accent);}
+  .rank-list li .nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#eef3ff;}
+  .rank-list li .sc{flex:0 0 auto;font-variant-numeric:tabular-nums;color:#fff;font-weight:900;}
+  .rank-list li.me{background:linear-gradient(90deg,rgba(53,230,214,.28),rgba(138,123,255,.24));border:1px solid rgba(53,230,214,.55);box-shadow:0 0 14px rgba(53,230,214,.25);}
+  .rank-list li.rank-loading,.rank-list li.rank-empty{justify-content:center;color:rgba(232,240,255,.5);background:transparent;font-weight:700;min-height:24cqmin;align-items:center;text-align:center;}
+
+  .reg-row{display:flex;gap:1.2cqmin;}
+  #nickInput{
+    flex:1 1 auto;min-width:0;font-family:inherit;font-size:clamp(15px,2.8cqmin,20px);font-weight:700;color:#eafffb;
+    padding:1.5cqmin 2cqmin;border-radius:2.2cqmin;border:1px solid var(--stroke);background:rgba(255,255,255,.08);outline:none;
+    transition:border-color .2s,box-shadow .2s,background .2s;
+  }
+  #nickInput::placeholder{color:rgba(232,240,255,.4);font-weight:600;}
+  #nickInput:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(53,230,214,.25);background:rgba(255,255,255,.13);}
+  #nickInput:disabled{opacity:.6;}
+  #nickInput.shake{animation:shk .4s;border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,91,110,.3);}
+  @keyframes shk{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}60%{transform:translateX(6px);}80%{transform:translateX(-3px);}}
+  .btn-sm{
+    appearance:none;border:0;cursor:pointer;font-family:inherit;flex:0 0 auto;font-size:2.8cqmin;font-weight:900;color:#04121a;
+    padding:0 3.4cqmin;border-radius:2.2cqmin;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    box-shadow:0 6px 18px rgba(53,230,214,.3);transition:transform .12s,filter .2s;
+  }
+  .btn-sm:hover{filter:brightness(1.07);transform:translateY(-1px);}
+  .btn-sm:active{transform:translateY(1px) scale(.98);}
+  .btn-sm:disabled{filter:grayscale(.6);opacity:.7;cursor:default;transform:none;}
+
+  /* 시작 화면 닉네임 입력 */
+  .start-nick{
+    display:block;width:min(86%,360px);margin:0 auto 2.6cqmin;
+    font-family:inherit;font-size:clamp(15px,2.8cqmin,20px);font-weight:700;text-align:center;
+    color:#eafffb;padding:1.6cqmin 2cqmin;border-radius:2.6cqmin;
+    border:1px solid var(--stroke);background:rgba(255,255,255,.08);outline:none;
+    transition:border-color .2s,box-shadow .2s,background .2s;
+  }
+  .start-nick::placeholder{color:rgba(232,240,255,.45);font-weight:600;}
+  .start-nick:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(53,230,214,.25);background:rgba(255,255,255,.13);}
+
+  @media (max-width:560px){
+    .over-left,.over-right{flex-basis:100%;min-width:100%;}
+    .over-cols{gap:2.4cqmin;}
+    .desc{max-width:none;}
+  }
+
+  /* ================= 세로(폰) 화면 ================= */
+  @media (orientation:portrait){
+    #stage{
+      width:100vw;
+      height:100vh;
+      height:100dvh;      /* 모바일 주소창 높이 변화 대응 */
+      border-radius:0;
+    }
+  }
+
+  /* 스테이지가 작아지면 cqmin 기반 글자가 읽을 수 없을 만큼 작아진다 → 하한/상한을 건다 */
+  .hud-label{font-size:clamp(8px,1.9cqmin,14px);}
+  .hud-val{font-size:clamp(20px,5cqmin,44px);}
+  #hint{font-size:clamp(12px,2.5cqmin,20px);}
+  .badge{font-size:clamp(9px,2cqmin,16px);}
+  .title{font-size:clamp(22px,6.4cqmin,52px);}
+  .subtitle{font-size:clamp(14px,3.4cqmin,28px);}
+  .desc{font-size:clamp(12px,2.6cqmin,21px);}
+  .btn{font-size:clamp(14px,3.4cqmin,27px);}
+  .btn-sm{font-size:clamp(12px,2.8cqmin,22px);}
+  .best{font-size:clamp(10px,2.3cqmin,18px);}
+  .npc-name{font-size:clamp(13px,3cqmin,24px);}
+  .npc-role{font-size:clamp(9px,2cqmin,16px);}
+  .dialogue-text{font-size:clamp(13px,2.9cqmin,23px);}
+  .rank-title{font-size:clamp(11px,2.4cqmin,19px);}
+  .rank-list li{font-size:clamp(11px,2.4cqmin,19px);}
+  #overOv .title{font-size:clamp(20px,5.6cqmin,45px);}
+  #overOv .desc{font-size:clamp(11px,2.5cqmin,20px);}
+  .grade-floor{font-size:clamp(30px,8.6cqmin,70px);}
+  .grade-name{font-size:clamp(16px,4.4cqmin,36px);}
+  .rankchip{font-size:clamp(12px,2.9cqmin,23px);}
+  .over-icon{font-size:clamp(28px,8cqmin,64px);}
+</style>
+</head>
+<body>
+  <div id="game">
+    <div id="stage">
+      <canvas id="cv" width="1280" height="720"></canvas>
+
+      <!-- HUD -->
+      <div id="floorBox" class="hud-box">
+        <span class="hud-label">복지 증축</span>
+        <span id="floorVal" class="hud-val">0층</span>
+      </div>
+      <div id="ddayBox" class="hud-box">
+        <span class="hud-label">오픈까지</span>
+        <span id="ddayVal" class="hud-val">D-60</span>
+        <div id="daybarWrap"><div id="daybar"></div></div>
+      </div>
+
+      <div id="hint">화면을 탭 / 클릭해서 복지 타워를 쌓으세요 👆</div>
+
+      <!-- 일시정지 버튼 -->
+      <button id="pauseBtn" aria-label="일시정지">⏸</button>
+
+      <!-- 일시정지 오버레이 -->
+      <div id="pauseOv" class="overlay">
+        <div class="card">
+          <span class="badge">일시정지 · PAUSED</span>
+          <h1 class="title">⏸ 잠깐 쉬어가기</h1>
+          <p class="desc">복지 타워 공사를 잠시 멈췄어요.<br>준비되면 이어서 쌓아 올리세요!</p>
+          <button id="resumeBtn" class="btn">▶ 이어서 짓기</button>
+        </div>
+      </div>
+
+      <!-- 인트로 컷씬 -->
+      <div id="introOv" class="overlay show">
+        <div class="card">
+          <img id="titleImg" class="title-img" src="assets/title.png" alt="위믹스 타워 타이쿤 · 60일 챌린지">
+          <div class="dialogue">
+            <div class="npc">
+              <span class="npc-avatar"><img src="assets/rabbit.png" alt="애니"></span>
+              <div class="npc-meta">
+                <span class="npc-name">애니</span>
+                <span class="npc-role">행복추진팀 팀장</span>
+              </div>
+            </div>
+            <p class="dialogue-text">와 대박!! 이번에 우리 신작 게임 <b>글로벌 잭팟</b> 터진 거 보셨죠? 🎉<br>
+            대표님이 복지 제대로 쏜다고 직원들이랑 애니팡 친구들 입주할 <b>‘초호화 복지 타워’</b> 지으라는데, 오픈까지 딱 <b>60일</b> 남았어요!<br>
+            일정 딜레이 없이 층수 쫙쫙 쌓아서 <b>갓벽한 복지 맛집</b> 한번 만들어봅시다. 레츠고! 🚀</p>
+          </div>
+          <button id="introBtn" class="btn">브리핑 접수 ▶</button>
+        </div>
+      </div>
+
+      <!-- 시작(준비) 화면 -->
+      <div id="startOv" class="overlay">
+        <div class="card">
+          <!-- 상단 타이틀/배지/이모지 제거됨 -->
+          <p class="desc">좌우로 움직이는 <b>블록</b>을 <b>탭</b>해서 복지 타워를 쌓아 올리세요.<br>
+          완벽하게 겹치면 <b>Perfect!</b> — 삐져나오면 그만큼 <b>싹둑</b> 잘려 나가요.<br>
+          <b>오픈 D-60</b> 전까지, 직원과 애니팡 친구들을 위한 최고의 복지 타워를 최대한 높이!</p>
+          <input id="startNick" class="start-nick" type="text" maxlength="10"
+                 placeholder="🏅 랭킹보드에 올릴 닉네임"
+                 autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+          <button id="startBtn" class="btn">🏗️ 복지 타워 건설 시작</button>
+          <div class="best" id="startBest">최고 기록 <b>0층</b></div>
+        </div>
+      </div>
+
+      <!-- 결과 화면 -->
+      <div id="overOv" class="overlay">
+        <div class="card">
+          <div class="over-cols">
+            <div class="over-left">
+              <div id="overIcon" class="over-icon">🏆</div>
+              <h1 class="title" id="overTitle">60일의 복지 기적!</h1>
+              <div class="grade-badge t2" id="gradeBadge">
+                <span class="grade-floor" id="overFloor">0층</span>
+                <span class="grade-name" id="overRank">등급명</span>
+              </div>
+              <p class="desc" id="overBody"></p>
+            </div>
+            <div class="over-right">
+              <div class="rank-panel">
+                <div class="rank-title">🏅 복지 건설왕 · TOP 5</div>
+                <ol id="rankList" class="rank-list"><li class="rank-loading">불러오는 중…</li></ol>
+              </div>
+              <div class="reg-row">
+                <input id="nickInput" type="text" maxlength="10" placeholder="닉네임 입력 후 등록"
+                       autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
+                <button id="regBtn" class="btn-sm">등록</button>
+              </div>
+            </div>
+          </div>
+          <div class="over-foot">
+            <button id="restartBtn" class="btn">🔄 다시 도전</button>
+            <div class="best" id="overBest">최고 기록 <b>0층</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= 상수 ================= */
+/* 논리 높이는 720 고정. 가로 폭만 화면 비율을 따라가므로 세로 화면에서도 층 수 체감이 같다. */
+const LOGICAL_H=720;
+let CW=1280, CH=LOGICAL_H, scale=1;
+let GROUND_SY=CH-58, PLACE=CH*0.42, BASEW=400;
+const fh=48, DEPTH=15, MARGIN=40;
+const SPACE_H=52*fh, PERFECT=9;
+/* 층이 오를수록 초록 → 파랑 → 보라. HUE_TOP층에서 보라에 도달 */
+const HUE_LOW=118, HUE_HIGH=284, HUE_TOP=60;
+const SPEED0=310, SPEEDI=15, SPEEDMAX=760;
+const GRAV=1150;
+const TOTAL_DAYS=60;
+
+/* ---- 랭킹 API / 안전장치 ---- */
+const SHEET_API='https://sheetdb.io/api/v1/wdqdb9w03j43l';
+const API_MS=2000;
+const LS_RANK='wmx_rank', LS_NICK='wmx_nick', LS_BEST='wmx_best';
+
+/* 퍼펙트(복지 혜택) 문구 */
+const PHRASES=['인센티브 추가! 💰','최신 최고급 장비 지급! 💻','게임 구입비 무한 지원! 🎮',
+               '삼시세끼 무료 제공! 🍱','복지 포인트 복사! ✨'];
+/* 주민 말풍선 대사 풀 (랜덤 선택) */
+const BUBBLE_LINES=['와 너무 넓다 좋다! 😍','복지 대박! 🔥','출근 개꿀! 🏃‍♂️','인센티브! 💰',
+                    '제로콜라! 🥤','복포 복사! ✨','풀옵 장비! 💻','점심 존맛! 🍱',
+                    '우주 뷰! ☁️','평생 알박기! 🐶','사직서 압수! 🔒','야근 퇴치! 🌙','회사 최고! 👍',
+                    '출근할 맛 나네! 😆','여기 복지 미쳤다! 🔥','삼시세끼 최고야! 🍱','평생 다니고 싶다! ✨'];
+const GROUND_SET=['🐶','🎮','🐱','💻','🐰','📱','🐻','🕹️','🦊','🎧','🐼'];
+/* 배경에서 만세하는 애니팡 친구들 (직접 그린 픽셀아트) */
+const CHAR_FILES=['assets/rabbit.png','assets/chick.png','assets/dog.png','assets/bear.png','assets/pig.png','assets/cat.png','assets/monkey.png'];
+const charImgs=[];
+function loadChars(){ CHAR_FILES.forEach((src,i)=>{ const im=new Image(); im.src=src; charImgs[i]=im; }); }
+
+const SKY=[
+  [0.00,[126,201,241]],[0.26,[86,166,226]],[0.48,[52,104,178]],
+  [0.66,[38,58,120]],[0.80,[24,26,72]],[0.90,[13,14,44]],[1.00,[4,4,16]]
+];
+
+/* ================= 상태 ================= */
+let cv,ctx;
+let state='intro';               // intro | start | playing | falling | over
+let tower=[], moving=null, base=null;
+let cam=0, camTarget=0;
+let days=TOTAL_DAYS, startTime=0;
+let combo=0, floors=0;
+let debris=[], confetti=[], floats=[], bubbles=[], failBlock=null;
+let stars=[], clouds=[], skyline=[], bgEmoji=[];
+let shake=0, last=0, timeSec=0, clock=0, bubbleTimer=2;
+let firstPlaced=false, hintTimer=0, paused=false, pausedAt=0;
+let pendingScore=0, registered=false, rankReqId=0;
+
+const $=id=>document.getElementById(id);
+let stage,floorVal,ddayVal,ddayBox,daybar,hintEl,pauseBtn,pauseOv;
+let introOv,startOv,overOv,startBest,overBest,overIcon,overTitle,overBody,overRank,overFloor,gradeBadge;
+let rankListEl,nickInput,regBtn,startNick;
+
+/* ================= 오디오 ================= */
+let actx=null;
+function audioInit(){
+  try{
+    if(!actx){ const AC=window.AudioContext||window.webkitAudioContext; if(AC) actx=new AC(); }
+    if(actx && actx.state==='suspended') actx.resume();
+  }catch(e){}
+}
+function blip(freq,dur,type,vol){
+  if(!actx) return;
+  try{
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.type=type||'square'; o.frequency.value=freq;
+    o.connect(g); g.connect(actx.destination);
+    const t=actx.currentTime;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol||0.14,t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.start(t); o.stop(t+dur+0.03);
+  }catch(e){}
+}
+function sndPlace(){ blip(170,0.09,'square',0.12); blip(92,0.14,'sine',0.11); }
+function sndPerfect(){ blip(740,0.08,'square',0.11);
+  setTimeout(()=>blip(990,0.12,'square',0.11),55);
+  setTimeout(()=>blip(1240,0.16,'sine',0.09),120); }
+function sndFail(){ if(!actx) return; try{
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.type='sawtooth'; o.connect(g); g.connect(actx.destination);
+  const t=actx.currentTime;
+  o.frequency.setValueAtTime(320,t); o.frequency.exponentialRampToValueAtTime(58,t+0.6);
+  g.gain.setValueAtTime(0.22,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.66);
+  o.start(t); o.stop(t+0.72);
+}catch(e){} }
+function sndTick(){ blip(1180,0.04,'square',0.05); }
+
+/* ================= 헬퍼 ================= */
+const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const sY=h=>GROUND_SY-h+cam;
+const altRatio=h=>clamp(h/SPACE_H,0,1);
+const levelHue=lv=>HUE_LOW+(HUE_HIGH-HUE_LOW)*clamp(lv/HUE_TOP,0,1);
+
+function skyRGB(r){
+  r=clamp(r,0,1);
+  for(let i=0;i<SKY.length-1;i++){
+    const a=SKY[i], b=SKY[i+1];
+    if(r>=a[0] && r<=b[0]){
+      const t=(r-a[0])/(b[0]-a[0]);
+      return [Math.round(lerp(a[1][0],b[1][0],t)),Math.round(lerp(a[1][1],b[1][1],t)),Math.round(lerp(a[1][2],b[1][2],t))];
+    }
+  }
+  return SKY[SKY.length-1][1];
+}
+const css=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
+function rr(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+/* ================= 랭킹 (API + LocalStorage Fallback) ================= */
+function lsGetRank(){ try{ const a=JSON.parse(localStorage.getItem(LS_RANK)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function lsSetRank(a){ try{ localStorage.setItem(LS_RANK, JSON.stringify(a.slice(0,50))); }catch(e){} }
+function lsAddRank(name,score){
+  const a=lsGetRank();
+  a.push({name:String(name).slice(0,10), score:Number(score)||0});
+  a.sort((x,y)=>(Number(y.score)||0)-(Number(x.score)||0));
+  lsSetRank(a); return a;
+}
+function fetchTimeout(url,opts,ms){
+  return new Promise((resolve,reject)=>{
+    let done=false;
+    const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+    const timer=setTimeout(()=>{ if(done)return; done=true; try{ctl&&ctl.abort();}catch(e){} reject(new Error('timeout')); },ms);
+    let f;
+    try{ f=fetch(url,Object.assign({},opts||{},ctl?{signal:ctl.signal}:{})); }
+    catch(e){ clearTimeout(timer); reject(e); return; }
+    f.then(r=>{ if(done)return; done=true; clearTimeout(timer); resolve(r); })
+     .catch(e=>{ if(done)return; done=true; clearTimeout(timer); reject(e); });
+  });
+}
+function normalizeRows(rows){
+  const out=[];
+  for(const r of (rows||[])){
+    if(!r) continue;
+    const nm=(r.name!=null?String(r.name):'').trim();
+    const sc=Number(r.score);
+    if(nm==='' && !isFinite(sc)) continue;
+    out.push({name:(nm||'익명운영자').slice(0,12), score:isFinite(sc)?sc:0});
+  }
+  out.sort((a,b)=>b.score-a.score);
+  return out;
+}
+async function loadRanking(highlight){
+  const myId=++rankReqId;
+  let rows=null;
+  try{
+    const res=await fetchTimeout(SHEET_API,{method:'GET',headers:{'Accept':'application/json'}},API_MS);
+    if(res && res.ok){ const data=await res.json(); if(Array.isArray(data)) rows=data; }
+  }catch(e){ /* 조용히 Fallback */ }
+  if(myId!==rankReqId) return;
+  let list;
+  if(rows){ list=normalizeRows(rows); lsSetRank(list); }
+  else { list=normalizeRows(lsGetRank()); }
+  renderRank(list, highlight);
+}
+async function submitScore(name,score){
+  const local=lsAddRank(name,score);
+  renderRank(normalizeRows(local), {name,score});
+  try{
+    await fetchTimeout(SHEET_API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify({data:{name:String(name).slice(0,10), score:Number(score)||0}})
+    },API_MS);
+  }catch(e){ /* 조용히 무시 → 로컬 유지 */ }
+  loadRanking({name,score});
+}
+function renderRank(list, hl){
+  if(!rankListEl) return;
+  rankListEl.innerHTML='';
+  if(!list || list.length===0){
+    const li=document.createElement('li');
+    li.className='rank-empty'; li.textContent='아직 기록이 없어요. 1등에 도전! 🚀';
+    rankListEl.appendChild(li); return;
+  }
+  const medals=['🥇','🥈','🥉'];
+  let hlUsed=false;
+  list.slice(0,5).forEach((r,i)=>{
+    const li=document.createElement('li');
+    if(hl && !hlUsed && r.name===String(hl.name).slice(0,10) && Number(r.score)===Number(hl.score)){ li.className='me'; hlUsed=true; }
+    const pos=document.createElement('span'); pos.className='pos'; pos.textContent=medals[i]||('#'+(i+1));
+    const nm=document.createElement('span'); nm.className='nm'; nm.textContent=r.name;
+    const sc=document.createElement('span'); sc.className='sc'; sc.textContent=r.score+'층';
+    li.appendChild(pos); li.appendChild(nm); li.appendChild(sc);
+    rankListEl.appendChild(li);
+  });
+}
+function doRegister(){
+  if(registered) return;
+  const name=(nickInput.value||'').trim();
+  if(name===''){
+    nickInput.classList.remove('shake'); void nickInput.offsetWidth; nickInput.classList.add('shake');
+    nickInput.focus(); return;
+  }
+  registered=true;
+  try{ localStorage.setItem(LS_NICK,name); }catch(e){}
+  if(startNick) startNick.value=name;
+  nickInput.disabled=true; regBtn.disabled=true; regBtn.textContent='등록됨 ✓';
+  submitScore(name, pendingScore);
+}
+
+/* ================= 씬 초기화 ================= */
+function initStars(){ stars=[]; for(let i=0;i<150;i++) stars.push({x:rnd(0,CW),h:rnd(6*fh,SPACE_H),r:rnd(.5,1.9),ph:rnd(0,6.28),sp:rnd(.6,1.9)}); }
+function initClouds(){ clouds=[]; for(let i=0;i<9;i++) clouds.push({x:rnd(-120,CW+120),h:rnd(2*fh,16*fh),s:rnd(.7,1.5),spd:rnd(6,20)*(Math.random()<.5?-1:1)}); }
+function initSkyline(){ skyline=[]; for(let i=0;i<18;i++) skyline.push({x:i*(CW/17)+rnd(-16,16),w:rnd(38,82),h:rnd(42,155),hue:rnd(212,232)}); }
+function initBgEmoji(){ bgEmoji=[]; const N=10; for(let i=0;i<N;i++) bgEmoji.push({ci:i%CHAR_FILES.length,x:rnd(80,CW-80),h:rnd(6*fh,34*fh),s:rnd(.9,1.4),spd:rnd(5,11)*(Math.random()<.5?-1:1),bob:rnd(0,6.28),cheer:0}); }
+
+function spawnMoving(){
+  const below=tower[tower.length-1];
+  const level=below.level+1;
+  const fromLeft=(level%2===1);
+  moving={ x:fromLeft?MARGIN:CW-MARGIN-below.w, w:below.w, dir:fromLeft?1:-1, level, hue:levelHue(level) };
+}
+function resetWorld(){
+  base={x:(CW-BASEW)/2, w:BASEW, level:0, hue:levelHue(0)};
+  tower=[base]; spawnMoving();
+  cam=0; camTarget=0; debris=[]; confetti=[]; floats=[]; bubbles=[]; failBlock=null;
+  combo=0; floors=0; days=TOTAL_DAYS; shake=0; timeSec=0; bubbleTimer=2; firstPlaced=false;
+  initStars(); initClouds(); initSkyline(); initBgEmoji();
+  updateFloors(); updateDday();
+}
+function advanceIntro(){
+  if(state!=='intro') return;
+  hideEl(introOv); showEl(startOv);
+  state='start'; audioInit();
+}
+function beginPlay(){
+  const sn=(startNick&&startNick.value||'').trim();
+  if(sn){ try{ localStorage.setItem(LS_NICK,sn); }catch(e){} }
+  resetWorld();
+  hideEl(introOv); hideEl(startOv); hideEl(overOv);
+  startOv.classList.remove('kbd'); overOv.classList.remove('kbd');
+  hintEl.classList.remove('hide');
+  clearTimeout(hintTimer); hintTimer=setTimeout(()=>hintEl.classList.add('hide'),4200);
+  state='playing';
+  paused=false; pauseOv.classList.remove('show'); pauseBtn.classList.add('show');
+  startTime=performance.now(); last=startTime;
+  audioInit();
+}
+function setPause(p){
+  if(state!=='playing') return;        // 플레이 중에만 정지 가능
+  if(p===paused) return;
+  paused=p;
+  if(paused){ pausedAt=performance.now(); }
+  else{ const t=performance.now(); startTime+=t-pausedAt; last=t; }   // 멈춘 시간만큼 D-day 보정
+  pauseOv.classList.toggle('show',paused);
+}
+function togglePause(){ setPause(!paused); }
+
+/* ================= 이펙트 ================= */
+function addDebris(x,w,level,hue,side){
+  debris.push({x, sy:sY((level+1)*fh), w, h:fh, hue, vx:side*rnd(60,140), vy:rnd(-70,-20), rot:0, vrot:side*rnd(2,5), alpha:1});
+}
+function addFloat(x,y,text,hue){ floats.push({x,y,text,hue,alpha:1,vy:-46,scale:0.4,life:0}); }
+function addConfetti(x,y,hue){
+  for(let i=0;i<22;i++){
+    const a=rnd(0,6.28), sp=rnd(90,320);
+    confetti.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-140,rot:rnd(0,6.28),vrot:rnd(-8,8),
+      col:`hsl(${(hue+rnd(-40,40))|0} 90% ${(58+rnd(0,18))|0}%)`,w:rnd(6,13),h:rnd(6,13),alpha:1});
+  }
+}
+function spawnBubble(){
+  // 화면에 보이는 캐릭터 하나가 자기 고유 대사를 외침
+  const vis=[];
+  for(const b of bgEmoji){ const yy=sY(b.h); if(yy>90&&yy<CH-90) vis.push(b); }
+  if(!vis.length) return;
+  const b=vis[(Math.random()*vis.length)|0];
+  bubbles.push({x:b.x, y:sY(b.h)-46, txt:BUBBLE_LINES[(Math.random()*BUBBLE_LINES.length)|0], life:0, dur:2.4, alpha:1});
+}
+/* 블록이 쌓일 때마다 배경의 애니팡 친구들이 만세! */
+function cheerCharacters(){
+  for(const b of bgEmoji) b.cheer=1;
+}
+
+/* ================= 배치 로직 (코어 - 유지) ================= */
+function placeBlock(){
+  const below=tower[tower.length-1];
+  const m=moving;
+  const ovL=Math.max(m.x,below.x), ovR=Math.min(m.x+m.w,below.x+below.w);
+  const ov=ovR-ovL;
+  if(ov<=0){ startFail(); return; }
+
+  const offset=Math.abs(m.x-below.x);
+  let px,pw,perfect=false;
+  if(offset<=PERFECT){ perfect=true; px=below.x; pw=below.w; }
+  else{
+    px=ovL; pw=ov;
+    if(m.x<ovL) addDebris(m.x, ovL-m.x, m.level, m.hue, -1);
+    if(m.x+m.w>ovR) addDebris(ovR, (m.x+m.w)-ovR, m.level, m.hue, 1);
+  }
+  tower.push({x:px,w:pw,level:m.level,hue:m.hue});
+  floors=tower.length-1; updateFloors();
+  if(!firstPlaced){ firstPlaced=true; hintEl.classList.add('hide'); }
+
+  const cx=px+pw/2, cy=sY((m.level+1)*fh);
+  if(perfect){
+    combo++;
+    const ph=PHRASES[(floors-1+combo)%PHRASES.length];
+    addFloat(cx, cy-8, combo>1?ph+'  x'+combo:ph, m.hue);
+    addConfetti(cx, cy, m.hue); sndPerfect();
+  }else{ combo=0; shake=6; sndPlace(); }
+  if(floors>=61){ addConfetti(cx-40, cy, (m.hue+120)%360); addConfetti(cx+40, cy, (m.hue+240)%360); }  // 우주 돌파 축포
+  spawnBubble(); cheerCharacters();   // 매 배치마다 친구들 환호 + 말풍선
+  spawnMoving();
+}
+function startFail(){
+  const below=tower[tower.length-1], m=moving;
+  const side=(m.x+m.w/2)<(below.x+below.w/2)?-1:1;
+  failBlock={x:m.x, sy:sY((m.level+1)*fh), w:m.w, hue:m.hue, vx:side*70, vy:-40, rot:0, vrot:side*2.4, alpha:1};
+  moving=null; shake=13; state='falling'; sndFail();
+}
+
+/* ================= 업데이트 ================= */
+function update(now,dt){
+  clock+=dt;
+  if((state==='intro'||state==='start'||state==='playing') && moving){
+    const sp=Math.min(SPEEDMAX,SPEED0+moving.level*SPEEDI);
+    moving.x+=moving.dir*sp*dt;
+    const minX=MARGIN, maxX=CW-MARGIN-moving.w;
+    if(moving.x<=minX){moving.x=minX;moving.dir=1;}
+    if(moving.x>=maxX){moving.x=maxX;moving.dir=-1;}
+  }
+  camTarget=Math.max(0, PLACE-GROUND_SY+(tower.length+1)*fh);
+  cam+=(camTarget-cam)*Math.min(1,dt*6);
+
+  if(state==='playing'){
+    timeSec=(now-startTime)/1000;
+    const nd=Math.max(0,TOTAL_DAYS-Math.floor(timeSec));
+    if(nd!==days){ days=nd; updateDday(); if(days<=10&&days>0) sndTick(); }
+    if(timeSec>=TOTAL_DAYS) showOver('success');
+    bubbleTimer-=dt;
+    if(bubbleTimer<=0){ spawnBubble(); bubbleTimer=rnd(2.6,4.4); }
+  }
+  if(state==='falling'&&failBlock){
+    failBlock.vy+=GRAV*dt; failBlock.sy+=failBlock.vy*dt; failBlock.x+=failBlock.vx*dt; failBlock.rot+=failBlock.vrot*dt;
+    if(failBlock.sy>CH+280) showOver('fail');
+  }
+  for(let i=debris.length-1;i>=0;i--){ const d=debris[i]; d.vy+=GRAV*dt; d.sy+=d.vy*dt; d.x+=d.vx*dt; d.rot+=d.vrot*dt; d.alpha-=dt*0.9; if(d.alpha<=0||d.sy>CH+120) debris.splice(i,1); }
+  for(let i=confetti.length-1;i>=0;i--){ const c=confetti[i]; c.vy+=GRAV*0.7*dt; c.x+=c.vx*dt; c.y+=c.vy*dt; c.rot+=c.vrot*dt; c.alpha-=dt*0.85; if(c.alpha<=0||c.y>CH+60) confetti.splice(i,1); }
+  for(let i=floats.length-1;i>=0;i--){ const f=floats[i]; f.life+=dt; f.y+=f.vy*dt; f.scale=lerp(f.scale,1.12,Math.min(1,dt*8)); if(f.life>0.5) f.alpha-=dt*1.1; if(f.alpha<=0) floats.splice(i,1); }
+  for(let i=bubbles.length-1;i>=0;i--){ const b=bubbles[i]; b.life+=dt; b.y-=16*dt; if(b.life>b.dur-0.5) b.alpha-=dt*2; if(b.life>=b.dur||b.alpha<=0) bubbles.splice(i,1); }
+  for(const b of bgEmoji){
+    b.x+=b.spd*dt; if(b.x<-90)b.x=CW+90; if(b.x>CW+90)b.x=-90; b.bob+=dt;
+    if(b.cheer>0) b.cheer=Math.max(0,b.cheer-dt*1.7);
+    const yy=sY(b.h);   // 카메라 상승으로 화면 밖(아래)에 밀려나면 위로 재배치 → 무한 배경 유지
+    if(yy>CH+150){ b.h+=CH+rnd(60,300); b.x=rnd(60,CW-60); b.ci=(Math.random()*CHAR_FILES.length)|0; }
+    else if(yy<-220){ b.h-=CH+rnd(60,300); b.x=rnd(60,CW-60); }
+  }
+  for(const c of clouds){ c.x+=c.spd*dt; if(c.x<-160)c.x=CW+160; if(c.x>CW+160)c.x=-160; }
+  shake+=(0-shake)*Math.min(1,dt*7);
+}
+
+/* ================= 렌더 ================= */
+function drawBg(){
+  const hTop=GROUND_SY+cam, hMid=hTop-CH/2, hBot=hTop-CH;
+  const g=ctx.createLinearGradient(0,0,0,CH);
+  g.addColorStop(0,css(skyRGB(altRatio(hTop))));
+  g.addColorStop(0.5,css(skyRGB(altRatio(hMid))));
+  g.addColorStop(1,css(skyRGB(altRatio(Math.max(0,hBot)))));
+  ctx.fillStyle=g; ctx.fillRect(0,0,CW,CH);
+
+  const sunA=clamp(1-cam/(16*fh),0,1)*0.9;
+  if(sunA>0.01){
+    const sx=CW*0.77, sy=sY(6*fh);
+    const rg=ctx.createRadialGradient(sx,sy,4,sx,sy,180);
+    rg.addColorStop(0,`rgba(255,244,200,${0.9*sunA})`);
+    rg.addColorStop(0.4,`rgba(255,214,140,${0.5*sunA})`);
+    rg.addColorStop(1,'rgba(255,214,140,0)');
+    ctx.fillStyle=rg; ctx.fillRect(sx-180,sy-180,360,360);
+    ctx.fillStyle=`rgba(255,250,225,${sunA})`; ctx.beginPath(); ctx.arc(sx,sy,34,0,6.2832); ctx.fill();
+  }
+  const moonA=clamp((cam-20*fh)/(14*fh),0,1);
+  if(moonA>0.01){
+    const mx=CW*0.23, my=sY(30*fh+CH*0.7);
+    ctx.save(); ctx.globalAlpha=moonA;
+    const rg=ctx.createRadialGradient(mx,my,2,mx,my,90);
+    rg.addColorStop(0,'rgba(230,236,255,.9)'); rg.addColorStop(0.5,'rgba(180,195,255,.25)'); rg.addColorStop(1,'rgba(180,195,255,0)');
+    ctx.fillStyle=rg; ctx.fillRect(mx-90,my-90,180,180);
+    ctx.fillStyle='#eef1ff'; ctx.beginPath(); ctx.arc(mx,my,30,0,6.2832); ctx.fill();
+    ctx.fillStyle='rgba(190,200,230,.5)';
+    ctx.beginPath(); ctx.arc(mx-9,my-6,6,0,6.2832); ctx.arc(mx+8,my+7,4,0,6.2832); ctx.arc(mx+4,my-11,3,0,6.2832); ctx.fill();
+    ctx.restore();
+  }
+}
+function drawStars(){
+  for(const s of stars){
+    const a=clamp((altRatio(s.h)-0.28)/0.5,0,1);
+    if(a<=0) continue;
+    const y=sY(s.h); if(y<-4||y>CH+4) continue;
+    const tw=0.5+0.5*Math.sin(clock*s.sp+s.ph);
+    ctx.globalAlpha=a*(0.35+0.65*tw); ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.arc(s.x,y,s.r,0,6.2832); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+function drawSkyline(){
+  const a=clamp(1-cam/(10*fh),0,1)*0.55; if(a<=0.01) return;
+  const gy=sY(0); ctx.save(); ctx.globalAlpha=a;
+  for(const b of skyline){
+    ctx.fillStyle=`hsl(${b.hue|0} 40% 22%)`; ctx.fillRect(b.x,gy-b.h,b.w,b.h);
+    ctx.fillStyle='rgba(120,160,220,.18)';
+    for(let wy=gy-b.h+8; wy<gy-6; wy+=14) for(let wx=b.x+5; wx<b.x+b.w-6; wx+=12) ctx.fillRect(wx,wy,5,7);
+  }
+  ctx.restore();
+}
+function drawClouds(){
+  for(const c of clouds){
+    const y=sY(c.h); if(y<-60||y>CH+60) continue;
+    ctx.save(); ctx.fillStyle='#fff';
+    ctx.translate(c.x,y); ctx.scale(c.s,c.s);
+    for(const p of [[0,0,26],[26,6,20],[-24,7,18],[10,-10,18],[-10,-8,16]]){ ctx.beginPath(); ctx.ellipse(p[0],p[1],p[2],p[2]*0.72,0,0,6.2832); ctx.fill(); }
+    ctx.restore();
+  }
+}
+/* 배경 캐릭터 스프라이트는 렌더하지 않음(요청). bgEmoji는 말풍선 위치 앵커로만 사용 */
+function drawGround(){
+  const gy=sY(0); if(gy>=CH) return;
+  const pg=ctx.createLinearGradient(0,gy,0,CH);
+  pg.addColorStop(0,'#2b3350'); pg.addColorStop(1,'#161b2b');
+  ctx.fillStyle=pg; ctx.fillRect(0,gy,CW,CH-gy);
+  ctx.fillStyle='rgba(53,230,214,.14)'; ctx.fillRect(0,gy,CW,3);
+  ctx.textAlign='center'; ctx.textBaseline='alphabetic'; ctx.font='27px serif';
+  for(let i=0;i<GROUND_SET.length;i++){ const x=70+i*(CW-140)/(GROUND_SET.length-1); ctx.fillText(GROUND_SET[i],x,gy+31); }
+  ctx.font='bold 15px "Malgun Gothic",sans-serif';
+  ctx.fillStyle='rgba(0,0,0,.3)'; rr(CW/2-160,gy+40,320,26,8); ctx.fill();
+  ctx.fillStyle=css([255,215,106]); ctx.fillText('🎉 위믹스 드림 복지타워 오픈 D-60 · 건설 현장 🚧',CW/2,gy+58);
+}
+/* --- 빌딩 창문 (롤백) --- */
+function drawWindows(x,y,w,h,level){
+  const wy=y+h*0.28, wh=h*0.42, ww=12, gap=20;
+  let px=x+11, i=0;
+  while(px+ww<=x+w-9){
+    const lit=((level*7+i*3)%5)!==0;
+    ctx.fillStyle=lit?'rgba(255,224,140,.92)':'rgba(18,28,54,.5)';
+    ctx.fillRect(px,wy,ww,wh); px+=gap; i++;
+  }
+}
+function drawBlock(bx,bw,level,hue){
+  const topY=sY((level+1)*fh);
+  if(topY>CH+fh+8 || topY<-fh-DEPTH-8) return;
+  const d=DEPTH, h=fh;
+  ctx.fillStyle=`hsl(${hue} 62% 66%)`;
+  ctx.beginPath(); ctx.moveTo(bx,topY); ctx.lineTo(bx+bw,topY); ctx.lineTo(bx+bw+d,topY-d); ctx.lineTo(bx+d,topY-d); ctx.closePath(); ctx.fill();
+  ctx.fillStyle=`hsl(${hue} 62% 40%)`;
+  ctx.beginPath(); ctx.moveTo(bx+bw,topY); ctx.lineTo(bx+bw+d,topY-d); ctx.lineTo(bx+bw+d,topY-d+h); ctx.lineTo(bx+bw,topY+h); ctx.closePath(); ctx.fill();
+  ctx.fillStyle=`hsl(${hue} 62% 54%)`; ctx.fillRect(bx,topY,bw,h);
+  drawWindows(bx,topY,bw,h,level);
+  ctx.strokeStyle='rgba(0,0,0,.18)'; ctx.lineWidth=1; ctx.strokeRect(bx+.5,topY+.5,bw-1,h-1);
+}
+function drawBase(){
+  const b=base; drawBlock(b.x,b.w,0,b.hue);
+  const topY=sY(fh), cx=b.x+b.w/2;
+  ctx.fillStyle='rgba(14,18,32,.9)'; ctx.fillRect(cx-24,topY+fh-27,48,27);
+  ctx.fillStyle='rgba(120,200,255,.45)'; ctx.fillRect(cx-20,topY+fh-23,17,23); ctx.fillRect(cx+3,topY+fh-23,17,23);
+  ctx.fillStyle='rgba(0,0,0,.34)'; rr(cx-96,topY+4,192,21,6); ctx.fill();
+  ctx.fillStyle='#eafffb'; ctx.font='bold 12.5px "Malgun Gothic",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('WEMADE PLAY  ·  WELFARE TOWER',cx,topY+15); ctx.textBaseline='alphabetic';
+}
+function drawGhost(){
+  if(state!=='playing'||!moving) return;
+  const below=tower[tower.length-1];
+  ctx.fillStyle='rgba(0,0,0,.2)'; ctx.fillRect(moving.x,sY((below.level+1)*fh),moving.w,7);
+}
+function drawResident(){
+  const t=tower[tower.length-1];
+  if(t.level<=0||t.w<40) return;
+  const im=charImgs[t.level%CHAR_FILES.length];
+  if(!im || !im.complete || !im.naturalWidth) return;
+  const s=0.25, rw=im.naturalWidth*s, rh=im.naturalHeight*s;
+  const cx=t.x+t.w/2+DEPTH/2, footY=sY((t.level+1)*fh)-DEPTH+3;
+  if(footY<-rh-40||footY>CH+20) return;
+  ctx.save(); ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(im, cx-rw/2, footY-rh, rw, rh);
+  ctx.restore();
+}
+function drawDebris(){
+  for(const d of debris){
+    ctx.save(); ctx.globalAlpha=clamp(d.alpha,0,1); ctx.translate(d.x+d.w/2,d.sy+d.h/2); ctx.rotate(d.rot);
+    ctx.fillStyle=`hsl(${d.hue} 62% 54%)`; ctx.fillRect(-d.w/2,-d.h/2,d.w,d.h);
+    ctx.strokeStyle='rgba(0,0,0,.2)'; ctx.strokeRect(-d.w/2,-d.h/2,d.w,d.h); ctx.restore();
+  }
+  ctx.globalAlpha=1;
+}
+function drawConfetti(){
+  for(const c of confetti){ ctx.save(); ctx.globalAlpha=clamp(c.alpha,0,1); ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.fillStyle=c.col; ctx.fillRect(-c.w/2,-c.h/2,c.w,c.h); ctx.restore(); }
+  ctx.globalAlpha=1;
+}
+function drawFloats(){
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const f of floats){
+    ctx.save(); ctx.globalAlpha=clamp(f.alpha,0,1);
+    ctx.font=`900 ${(30*f.scale)|0}px "Malgun Gothic",sans-serif`;
+    ctx.shadowColor=`hsl(${f.hue} 90% 60%)`; ctx.shadowBlur=20;
+    ctx.fillStyle='#fff'; ctx.fillText(f.text,f.x,f.y); ctx.restore();
+  }
+  ctx.textBaseline='alphabetic';
+}
+function drawBubbles(){
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const bb of bubbles){
+    const a=clamp(bb.alpha,0,1);
+    ctx.font='bold 18px "Malgun Gothic",sans-serif';
+    const tw=ctx.measureText(bb.txt).width, bw=tw+24, bh=30;
+    const x=clamp(bb.x, bw/2+6, CW-bw/2-6), y=bb.y;
+    ctx.save(); ctx.globalAlpha=a;
+    ctx.fillStyle='rgba(18,26,46,.94)'; ctx.strokeStyle='rgba(53,230,214,.85)'; ctx.lineWidth=2;
+    rr(x-bw/2,y-bh/2,bw,bh,10); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x-6,y+bh/2-1); ctx.lineTo(x+6,y+bh/2-1); ctx.lineTo(x,y+bh/2+9); ctx.closePath();
+    ctx.fillStyle='rgba(18,26,46,.94)'; ctx.fill();
+    ctx.fillStyle='#eafffb'; ctx.fillText(bb.txt,x,y);
+    ctx.restore();
+  }
+  ctx.textBaseline='alphabetic';
+}
+function drawFailBlock(){
+  if(state!=='falling'||!failBlock) return;
+  const f=failBlock;
+  ctx.save(); ctx.globalAlpha=clamp(f.alpha,0,1); ctx.translate(f.x+f.w/2,f.sy+fh/2); ctx.rotate(f.rot);
+  ctx.fillStyle=`hsl(${f.hue} 62% 54%)`; ctx.fillRect(-f.w/2,-fh/2,f.w,fh);
+  drawWindows(-f.w/2,-fh/2,f.w,fh,3);
+  ctx.strokeStyle='rgba(0,0,0,.2)'; ctx.strokeRect(-f.w/2,-fh/2,f.w,fh); ctx.restore();
+}
+function render(){
+  ctx.setTransform(scale,0,0,scale,0,0);
+  ctx.clearRect(0,0,CW,CH);
+  ctx.save();
+  if(shake>0.3) ctx.translate(rnd(-shake,shake),rnd(-shake,shake));
+  drawBg(); drawStars(); drawClouds(); drawSkyline(); drawGround();
+  drawBase();
+  for(let i=1;i<tower.length;i++){ const b=tower[i]; drawBlock(b.x,b.w,b.level,b.hue); }
+  drawGhost();
+  if((state==='intro'||state==='start'||state==='playing')&&moving) drawBlock(moving.x,moving.w,moving.level,moving.hue);
+  drawResident();   // 주민 키가 한 층보다 커서, 이동 블록보다 뒤에 그리면 몸통이 덮인다
+  drawFailBlock();
+  drawDebris(); drawConfetti(); drawFloats(); drawBubbles();
+  ctx.restore();
+}
+
+/* ================= 루프 ================= */
+function loop(now){
+  if(!last) last=now;
+  let dt=(now-last)/1000; last=now;
+  if(dt>0.05) dt=0.05;
+  if(!paused) update(now,dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* ================= HUD / 결과 ================= */
+function updateDday(){ ddayVal.textContent='D-'+days; daybar.style.width=(days/TOTAL_DAYS*100)+'%'; ddayBox.classList.toggle('danger',days<=10); }
+function updateFloors(){ floorVal.textContent=floors+'층'; }
+function bestGet(){ try{return parseInt(localStorage.getItem(LS_BEST)||'0',10)||0;}catch(e){return 0;} }
+function bestSet(v){ try{localStorage.setItem(LS_BEST,String(v));}catch(e){} }
+/* 최종 층수(N)에 따른 4단계 등급 · 메시지. [D]는 남은 날짜로 치환 */
+function gradeInfo(n){
+  if(n>=61) return {tier:4, name:'우주 제일 신의 직장', icon:'🚀', head:'우주 정복! 🎉',
+    success:'경축! 성층권을 뚫고 우주까지 타워를 세웠습니다!<br>대표님 집무실이 달에 착륙했네요.<br>대표님 피셜 ‘올해의 최우수 마스터 빌더’로 임명합니다!<br>특별 보너스 각! 🚀',
+    fail:'경축! 성층권을 뚫고 우주까지 타워를 세웠습니다!<br>대표님 집무실이 달에 착륙했네요.<br>대표님 피셜 ‘올해의 최우수 마스터 빌더’로 임명합니다!<br>특별 보너스 각! 🚀'};
+  if(n>=36) return {tier:3, name:'초호화 드림 복지 타워', icon:'🏙️',
+    success:'대성공!<br>복지 포인트 복사 버그 급의 타워가 완성되었습니다.<br>직원들이 “와 너무 넓다 좋다!”라며 환호하네요! ✨',
+    fail:'아쉽게 D-[D]에 중단!<br>그래도 이미 성층권을 돌파한 훌륭한 복지 타워입니다.<br>인센티브 각! 💰'};
+  if(n>=16) return {tier:2, name:'쾌적한 모던 오피스', icon:'🏢',
+    success:'60일 완공!<br>삼시세끼 무료 제공과 스낵바 리필층까지는 무사히 들어왔습니다.<br>다들 만족하며 출근 중! 🍱',
+    fail:'안전진단 불합격으로 D-[D]에 중단!<br>하지만 안마실까지는 건졌으니 일단 누워서 쉽시다. 💆‍♂️'};
+  return {tier:1, name:'임시 가설 천막', icon:'🏕️',
+    success:'60일 동안 열심히 지었으나...<br>아직 1층 카페테리아도 다 못 만들었네요.<br>직원들이 기어 다녀야 합니다. 😭',
+    fail:'부실공사로 D-[D]에 공사 중단!<br>천막이 무너졌습니다.<br>다시 안전모 쓰고 도전하세요! 👷‍♂️'};
+}
+function showEl(el){el.classList.add('show');}
+function hideEl(el){el.classList.remove('show');}
+
+function showOver(kind){
+  state='over';
+  const N=tower.length-1;
+  let best=bestGet(); if(N>best){best=N; bestSet(N);}
+  const g=gradeInfo(N);
+  overIcon.textContent=g.icon;
+  overTitle.textContent = g.head || (kind==='success' ? '60일 완공!' : '공사 중단!');
+  overFloor.textContent = N+'층';
+  overRank.textContent = g.name;
+  gradeBadge.className = 'grade-badge t'+g.tier;       // 등급별 네온 색상
+  overBody.innerHTML = ((kind==='success') ? g.success : g.fail).replace('[D]', days);
+  overBest.innerHTML='내 최고 기록 <b>'+best+'층</b>';
+  pendingScore=N; registered=false;
+  nickInput.disabled=false; regBtn.disabled=false; regBtn.textContent='등록';
+  try{ nickInput.value=localStorage.getItem(LS_NICK)||''; }catch(e){ nickInput.value=''; }
+  overOv.classList.remove('kbd');
+  paused=false; pauseOv.classList.remove('show'); pauseBtn.classList.remove('show');
+  rankListEl.innerHTML='<li class="rank-loading">불러오는 중…</li>';
+  showEl(overOv);
+  loadRanking(null);
+}
+
+/* ================= 입력 ================= */
+function drop(){ if(state==='playing' && !paused) placeBlock(); }
+function bindEvents(){
+  stage.addEventListener('pointerdown',e=>{
+    audioInit();
+    if(state==='intro'){ advanceIntro(); return; }
+    if(state==='playing'){ e.preventDefault(); drop(); }
+  });
+  stage.addEventListener('contextmenu',e=>e.preventDefault());
+  window.addEventListener('keydown',e=>{
+    if(e.code==='KeyP'||e.code==='Escape'){ e.preventDefault(); togglePause(); return; }
+    if(e.code==='Space'||e.code==='Enter'||e.code==='ArrowUp'){
+      e.preventDefault(); audioInit();
+      if(state==='playing') drop();
+      else if(state==='intro') advanceIntro();
+      else if(state==='start'||state==='over') beginPlay();
+    }
+  });
+  $('introBtn').addEventListener('click',e=>{ e.stopPropagation(); audioInit(); advanceIntro(); });
+  $('startBtn').addEventListener('click',e=>{ e.stopPropagation(); audioInit(); beginPlay(); });
+  $('restartBtn').addEventListener('click',e=>{ e.stopPropagation(); audioInit(); beginPlay(); });
+
+  pauseBtn.addEventListener('pointerdown',e=>e.stopPropagation());
+  pauseBtn.addEventListener('click',e=>{ e.stopPropagation(); setPause(true); });
+  $('resumeBtn').addEventListener('pointerdown',e=>e.stopPropagation());
+  $('resumeBtn').addEventListener('click',e=>{ e.stopPropagation(); setPause(false); });
+
+  regBtn.addEventListener('click',e=>{ e.stopPropagation(); e.preventDefault(); doRegister(); });
+  nickInput.addEventListener('pointerdown',e=>e.stopPropagation());
+  nickInput.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter'||e.code==='Enter'){ e.preventDefault(); doRegister(); } });
+  nickInput.addEventListener('keyup',e=>e.stopPropagation());
+  nickInput.addEventListener('focus',()=>{ overOv.classList.add('kbd'); });
+  nickInput.addEventListener('blur',()=>{ overOv.classList.remove('kbd'); });
+
+  startNick.addEventListener('pointerdown',e=>e.stopPropagation());
+  startNick.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter'||e.code==='Enter'){ e.preventDefault(); beginPlay(); } });
+  startNick.addEventListener('keyup',e=>e.stopPropagation());
+  startNick.addEventListener('focus',()=>{ startOv.classList.add('kbd'); });
+  startNick.addEventListener('blur',()=>{ startOv.classList.remove('kbd'); });
+
+  document.addEventListener('touchmove',e=>{ if(e.target.closest('#stage') && !e.target.closest('.card')) e.preventDefault(); },{passive:false});
+}
+
+/* ================= 캔버스 크기 ================= */
+function setupCanvas(){
+  const r=stage.getBoundingClientRect();
+  const d=Math.min(2,Math.max(1.5,window.devicePixelRatio||1));   // 저해상도 화면도 살짝 슈퍼샘플링
+  cv.width=Math.max(1,Math.round(r.width*d));
+  cv.height=Math.max(1,Math.round(r.height*d));
+  CH=LOGICAL_H; scale=cv.height/CH; CW=Math.round(cv.width/scale);
+  ctx.setTransform(scale,0,0,scale,0,0);
+  ctx.imageSmoothingEnabled=true;
+  GROUND_SY=CH-58; PLACE=CH*0.42;
+  BASEW=Math.min(400,Math.round(CW*0.55));
+}
+function onResize(){
+  const oldCW=CW;
+  setupCanvas();
+  const k=CW/oldCW;                       // 논리 높이는 그대로라 x축만 다시 맞추면 된다
+  for(const b of tower){ b.x*=k; b.w*=k; }
+  if(moving){ moving.x*=k; moving.w*=k; }
+  initStars(); initClouds(); initSkyline(); initBgEmoji();
+}
+
+/* ================= 시작 ================= */
+function boot(){
+  cv=$('cv'); ctx=cv.getContext('2d');
+  loadChars();
+  stage=$('stage'); floorVal=$('floorVal'); ddayVal=$('ddayVal'); ddayBox=$('ddayBox');
+  daybar=$('daybar'); hintEl=$('hint'); pauseBtn=$('pauseBtn'); pauseOv=$('pauseOv');
+  introOv=$('introOv'); startOv=$('startOv'); overOv=$('overOv'); startBest=$('startBest'); overBest=$('overBest');
+  overIcon=$('overIcon'); overTitle=$('overTitle'); overBody=$('overBody'); overRank=$('overRank');
+  overFloor=$('overFloor'); gradeBadge=$('gradeBadge');
+  rankListEl=$('rankList'); nickInput=$('nickInput'); regBtn=$('regBtn'); startNick=$('startNick');
+
+  startBest.innerHTML='내 최고 기록 <b>'+bestGet()+'층</b>';
+  try{ startNick.value=localStorage.getItem(LS_NICK)||''; }catch(e){}
+  hintEl.classList.add('hide');
+  setupCanvas();
+  resetWorld();
+  state='intro';
+  bindEvents();
+  window.addEventListener('resize',onResize);
+  requestAnimationFrame(loop);
+}
+boot();
+})();
+</script>
+</body>
+</html>
